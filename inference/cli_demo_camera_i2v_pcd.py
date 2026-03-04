@@ -382,8 +382,8 @@ def generate_video(
         output_path_file_reference = output_path_file.replace("_out.mp4", "_reference.mp4")
         output_path_file_out_reference = output_path_file.replace(".mp4", "_reference.mp4")
         
-        export_to_video(video_generate, output_path_file, fps=8)
-        export_to_video(reference_frames, output_path_file_reference, fps=8)
+        export_to_video(video_generate, output_path_file, fps=24)
+        export_to_video(reference_frames, output_path_file_reference, fps=24)
         anchor_videos_frames_list = [[to_pil_image(frame) for frame in ((anchor_video.permute(1, 0, 2, 3)/2+0.5))] for anchor_video in anchor_videos_list[1:]]
         
         anchor_video_vis = anchor_videos[0].permute(1, 0, 2, 3)  # [T, C, H, W] for visualization
@@ -419,7 +419,7 @@ def generate_video(
             stack_images_vertically(first_row, second_row)
             for first_row, second_row in zip(first_row_frames, second_row_frames)
         ]
-        export_to_video(out_reference_frames, output_path_file_out_reference, fps=8)
+        export_to_video(out_reference_frames, output_path_file_out_reference, fps=24)
         
         anchor_videos_frames_list = [anchor_video_first] + anchor_videos_frames_list
         all_anchors_frames = [
@@ -432,7 +432,7 @@ def generate_video(
             for i in range(len(anchor_videos_frames_list[0]))
         ]
         output_path_file_anchors = output_path_file.replace(".mp4", "_anchors.mp4")
-        export_to_video(all_anchors_frames, output_path_file_anchors, fps=8)
+        export_to_video(all_anchors_frames, output_path_file_anchors, fps=24)
 
 
 if __name__ == "__main__":
