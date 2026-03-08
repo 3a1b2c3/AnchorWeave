@@ -60,4 +60,5 @@ python inference/cli_demo_camera_i2v_pcd.py ^
     --pool_style %pool_style% ^
     --seed %SEED% ^
     --use_camera_condition ^
-    --split_type test
+    --split_type test ^
+    --stats_csv "%out_dir%\stats_%SEED%.csv"

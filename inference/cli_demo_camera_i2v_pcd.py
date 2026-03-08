@@ -4,7 +4,10 @@ sys.path.insert(0, os.getcwd())
 sys.path.append('.')
 sys.path.append('..')
 import argparse
+import csv
 import os
+import time
+import psutil
 
 import torch
 from transformers import T5EncoderModel, T5Tokenizer
@@ -203,6 +206,7 @@ def generate_video(
     infer_with_mask: bool = False,
     pool_style: str = 'avg',
     pipe_cpu_offload: bool = False,
+    stats_csv: str = None,
 ):
     """
     Generates a video based on the given prompt and saves it to the specified path.
@@ -358,6 +362,7 @@ def generate_video(
         # if os.path.isfile(output_path_file):
         #     continue
         
+        t0 = time.perf_counter()
         video_generate_all = pipe(
             image=input_images,
             anchor_videos=anchor_videos,
@@ -375,7 +380,27 @@ def generate_video(
             controlnet_guidance_start=controlnet_guidance_start,
             controlnet_guidance_end=controlnet_guidance_end,
         ).frames
+        elapsed = time.perf_counter() - t0
         video_generate = video_generate_all[0]
+
+        if stats_csv is not None:
+            fps = num_frames / elapsed
+            ram_gb = psutil.Process().memory_info().rss / 1024 ** 3
+            vram_gb = torch.cuda.max_memory_allocated() / 1024 ** 3 if torch.cuda.is_available() else 0.0
+            torch.cuda.reset_peak_memory_stats()
+            write_header = not os.path.exists(stats_csv)
+            with open(stats_csv, "a", newline="") as f:
+                writer = csv.DictWriter(f, fieldnames=["seed", "camera_idx", "elapsed_s", "fps", "ram_gb", "vram_gb"])
+                if write_header:
+                    writer.writeheader()
+                writer.writerow({
+                    "seed": seed,
+                    "camera_idx": camera_idx,
+                    "elapsed_s": round(elapsed, 2),
+                    "fps": round(fps, 3),
+                    "ram_gb": round(ram_gb, 2),
+                    "vram_gb": round(vram_gb, 2),
+                })
 
         reference_frames = [to_pil_image(frame) for frame in ((reference_video.permute(1, 0, 2, 3)/2+0.5))]
         
@@ -488,6 +513,7 @@ if __name__ == "__main__":
     parser.add_argument("--controlnet_input_channels", type=int, default=6)
     parser.add_argument("--controlnet_transformer_num_layers", type=int, default=8)
     parser.add_argument("--enable_model_cpu_offload", action="store_true", default=False, help="Enable model CPU offload")
+    parser.add_argument("--stats_csv", type=str, default=None, help="Path to CSV file for writing per-sample perf stats (fps, ram_gb, vram_gb)")
 
     args = parser.parse_args()
     dtype = torch.float16 if args.dtype == "float16" else torch.bfloat16
@@ -525,4 +551,5 @@ if __name__ == "__main__":
         infer_with_mask=args.infer_with_mask,
         pool_style=args.pool_style,
         pipe_cpu_offload=args.enable_model_cpu_offload,
+        stats_csv=args.stats_csv,
     )
